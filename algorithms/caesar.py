@@ -1,11 +1,11 @@
-from algorithms.alphabet import TURKISH_ALPHABET, M
+from algorithms.alphabet import TURKISH_ALPHABET, ALPHABET_SIZE
 
 
 class CaesarCipherTR:
     def __init__(self, shift=3):
         self.shift = shift
         self.alphabet = TURKISH_ALPHABET
-        self.m = M  # 29 harf
+        self.m = ALPHABET_SIZE  # 29 harf
 
     def encrypt(self, text):
         result = ""

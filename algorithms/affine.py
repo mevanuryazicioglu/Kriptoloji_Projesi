@@ -1,10 +1,10 @@
-from algorithms.alphabet import TURKISH_ALPHABET, M
+from algorithms.alphabet import TURKISH_ALPHABET, ALPHABET_SIZE
 from math import gcd
 
 class AffineCipherTR:
     def __init__(self, a=5, b=8):
         self.alphabet = TURKISH_ALPHABET
-        self.m = len(self.alphabet)
+        self.m = ALPHABET_SIZE
         if gcd(a, self.m) != 1:
             raise ValueError("‘a’ sayısı alfabe uzunluğu ile aralarında asal olmalı!")
         self.a = a
