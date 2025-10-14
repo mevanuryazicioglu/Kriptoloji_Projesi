@@ -12,7 +12,7 @@ app = FastAPI()
 
 class CryptoRequest(BaseModel):
     algorithm: str
-    operation: str  # "encrypt" or "decrypt"
+    operation: str  
     text: str
     key1: Any = None
     key2: Optional[int] = None
