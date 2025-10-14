@@ -32,7 +32,7 @@ class CryptoGUI:
 
         tk.Label(self.window, text="Algoritma Seç:").pack(pady=5)
         self.algorithm = tk.StringVar(value="")
-        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere").pack(pady=5)
+        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence").pack(pady=5)
         self.algorithm.trace("w", self.update_keys)
 
         self.key_frame = tk.Frame(self.window)
@@ -77,7 +77,10 @@ class CryptoGUI:
             elif algo == "Vigenere":
                 self.key1_label.config(text="Anahtar 1")
                 set_placeholder(self.key1_entry, "Kelime girin")
-
+            elif algo == "Rail Fence":
+                self.key1_label.config(text="Ray")
+                set_placeholder(self.key2_entry, "Sayı girin")
+                
     def encrypt_text(self):
         text = self.input_text.get()
         algo = self.algorithm.get()

@@ -4,6 +4,7 @@ from typing import Optional, Any
 from algorithms.caesar import CaesarCipherTR
 from algorithms.vigenere import VigenereCipherTR
 from algorithms.affine import AffineCipherTR
+from algorithms.railfence import RailFenceCipherTR
 import uvicorn
 import traceback
 
@@ -26,7 +27,8 @@ class Server:
         self.algorithms = {
             "Caesar": CaesarCipherTR(),
             "Vigenere": VigenereCipherTR(),
-            "Affine": AffineCipherTR()
+            "Affine": AffineCipherTR(),
+            "Rail Fence": RailFenceCipherTR(),
         }
 
     def encrypt(self, algorithm, text, key1=None, key2=None):
@@ -43,6 +45,11 @@ class Server:
                 self.algorithms[algorithm].a = key1
                 self.algorithms[algorithm].b = key2
             return self.algorithms[algorithm].encrypt(text)
+        elif algorithm == "Rail Fence":
+            if key1 is not None:
+                self.algorithms[algorithm].rails = int(key1)
+            return self.algorithms[algorithm].encrypt(text)
+
 
     def decrypt(self, algorithm, text, key1=None, key2=None):
         if algorithm == "Caesar":
@@ -58,7 +65,11 @@ class Server:
                 self.algorithms[algorithm].a = key1
                 self.algorithms[algorithm].b = key2
             return self.algorithms[algorithm].decrypt(text)
-
+        elif algorithm == "Rail Fence":
+            if key1 is not None:
+                self.algorithms[algorithm].rails = int(key1)
+            
+            return self.algorithms[algorithm].decrypt(text)
 server = Server()
 
 @app.post("/crypto", response_model=CryptoResponse)
@@ -85,3 +96,4 @@ async def process_crypto(request: CryptoRequest):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
