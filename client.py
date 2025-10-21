@@ -32,16 +32,16 @@ class CryptoGUI:
 
         tk.Label(self.window, text="Algoritma Seç:").pack(pady=5)
         self.algorithm = tk.StringVar(value="")
-        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence").pack(pady=5)
+        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill").pack(pady=5)
         self.algorithm.trace("w", self.update_keys)
 
         self.key_frame = tk.Frame(self.window)
         self.key_frame.pack(pady=5)
 
-        self.key1_label = tk.Label(self.key_frame, text="", font=("Arial", 8), fg="gray")
-        self.key1_entry = tk.Entry(self.key_frame, width=20)
-        self.key2_label = tk.Label(self.key_frame, text="Sayı girin", font=("Arial", 8), fg="gray")
-        self.key2_entry = tk.Entry(self.key_frame, width=20)
+        self.key1_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
+        self.key1_entry = tk.Entry(self.key_frame)
+        self.key2_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
+        self.key2_entry = tk.Entry(self.key_frame)
 
         self.result_label = tk.Label(self.window, text="", wraplength=400)
         self.result_label.pack(pady=10)
@@ -60,6 +60,12 @@ class CryptoGUI:
         self.key2_entry.pack_forget()
         self.key1_entry.delete(0, tk.END)
         self.key2_entry.delete(0, tk.END)
+        
+        if not algo:
+            return
+
+        if algo == "Polybius":
+            return
 
         if algo:
             self.key1_label.pack()
@@ -79,8 +85,21 @@ class CryptoGUI:
                 set_placeholder(self.key1_entry, "Kelime girin")
             elif algo == "Rail Fence":
                 self.key1_label.config(text="Ray")
-                set_placeholder(self.key2_entry, "Sayı girin")
-                
+                set_placeholder(self.key1_entry, "Sayı girin")
+            elif algo == "Route":
+                self.key1_label.config(text="Sütun sayısı")
+                set_placeholder(self.key1_entry, "Sayı girin")
+            elif algo == "Columnar":
+                self.key1_label.config(text="Anahtar Kelime")
+                set_placeholder(self.key1_entry, "Kelime girin")
+            elif algo == "Hill":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="Anahtar Matris (örn: 3,3;2,5)")
+                set_placeholder(self.key1_entry, "2x2 veya 3x3 matrisi girin")
+
+
+        
     def encrypt_text(self):
         text = self.input_text.get()
         algo = self.algorithm.get()
@@ -125,7 +144,37 @@ class CryptoGUI:
                     self.result_label.config(text="Hata: Anahtar 1 boş olamaz!")
                     return
                 payload["key1"] = key1
+                
+            elif algo == "Rail Fence":
+                key1_str = self.key1_entry.get()
+                if not key1_str or key1_str.strip() == "" or key1_str == "Sayı girin":
+                    self.result_label.config(text="Hata: Ray sayısı boş olamaz!")
+                    return
+                payload["key1"] = int(key1_str)
+
+            elif algo == "Route":
+                key1_str = self.key1_entry.get()
+                if not key1_str or key1_str.strip() == "" or key1_str == "Sayı girin":
+                    self.result_label.config(text="Hata: Sütun sayısı boş olamaz!")
+                    return
+                payload["key1"] = int(key1_str)
+            elif algo == "Columnar":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "Kelime girin":
+                    self.result_label.config(text="Hata: Anahtar kelime boş olamaz!")
+                    return
+                payload["key1"] = key1
+                
+            elif algo == "Polybius":
+                pass  
             
+            elif algo == "Hill":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "2x2 veya 3x3 matrisi girin":
+                    self.result_label.config(text="Hata: Anahtar matris boş olamaz!")
+                    return
+                payload["key1"] = key1
+
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
             
             if response.status_code == 200:
@@ -184,6 +233,38 @@ class CryptoGUI:
                     return
                 payload["key1"] = key1
             
+            elif algo == "Rail Fence":
+                key1_str = self.key1_entry.get()
+                if not key1_str or key1_str.strip() == "" or key1_str == "Sayı girin":
+                    self.result_label.config(text="Hata: Ray sayısı boş olamaz!")
+                    return
+                payload["key1"] = int(key1_str)
+
+            elif algo == "Route":
+                key1_str = self.key1_entry.get()
+                if not key1_str or key1_str.strip() == "" or key1_str == "Sayı girin":
+                    self.result_label.config(text="Hata: Sütun sayısı boş olamaz!")
+                    return
+                payload["key1"] = int(key1_str)
+                
+            elif algo == "Columnar":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "Kelime girin":
+                    self.result_label.config(text="Hata: Anahtar kelime boş olamaz!")
+                    return
+                payload["key1"] = key1
+                
+            elif algo == "Polybius":
+                pass  
+            
+            elif algo == "Hill":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "2x2 veya 3x3 matrisi girin":
+                    self.result_label.config(text="Hata: Anahtar matris boş olamaz!")
+                    return
+                payload["key1"] = key1
+
+
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
             
             if response.status_code == 200:
