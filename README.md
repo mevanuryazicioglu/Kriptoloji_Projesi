@@ -1,4 +1,4 @@
-# Kriptoloji Projesi
+# Cryptology Project
 This project enables data transfer from client to server. The client sends user input through a GUI, and the server receives the message, encrypts/decrypts it and responds.
 
 ## Requirements
