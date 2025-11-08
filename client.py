@@ -32,7 +32,7 @@ class CryptoGUI:
 
         tk.Label(self.window, text="Algoritma Seç:").pack(pady=5)
         self.algorithm = tk.StringVar(value="")
-        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill").pack(pady=5)
+        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill", "DES").pack(pady=5)
         self.algorithm.trace("w", self.update_keys)
 
         self.key_frame = tk.Frame(self.window)
@@ -97,6 +97,12 @@ class CryptoGUI:
                 self.key1_entry.pack(pady=2)
                 self.key1_label.config(text="Anahtar Matris (örn: 3,3;2,5)")
                 set_placeholder(self.key1_entry, "2x2 veya 3x3 matrisi girin")
+            elif algo == "DES":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="Anahtar (8 karakter)")
+                set_placeholder(self.key1_entry, "8 karakter girin")
+
 
 
         
@@ -174,6 +180,16 @@ class CryptoGUI:
                     self.result_label.config(text="Hata: Anahtar matris boş olamaz!")
                     return
                 payload["key1"] = key1
+            elif algo == "DES":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "8 karakter girin":
+                    self.result_label.config(text="Hata: Anahtar boş olamaz ve 8 karakter olmalı!")
+                    return
+                if len(key1) != 8:
+                    self.result_label.config(text="Hata: DES anahtarı 8 karakter olmalıdır!")
+                    return
+                payload["key1"] = key1
+
 
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
             
@@ -261,6 +277,15 @@ class CryptoGUI:
                 key1 = self.key1_entry.get()
                 if not key1 or key1.strip() == "" or key1 == "2x2 veya 3x3 matrisi girin":
                     self.result_label.config(text="Hata: Anahtar matris boş olamaz!")
+                    return
+                payload["key1"] = key1
+            elif algo == "DES":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "8 karakter girin":
+                    self.result_label.config(text="Hata: Anahtar boş olamaz ve 8 karakter olmalı!")
+                    return
+                if len(key1) != 8:
+                    self.result_label.config(text="Hata: DES anahtarı 8 karakter olmalıdır!")
                     return
                 payload["key1"] = key1
 

@@ -9,6 +9,7 @@ from algorithms.route import RouteCipherTR
 from algorithms.columnar import ColumnarCipherTR
 from algorithms.polybius import PolybiusCipherTR
 from algorithms.hill import HillCipherTR
+from algorithms.des import DESCipherTR
 import uvicorn
 import traceback
 import ast  
@@ -41,6 +42,7 @@ class Server:
             "Columnar": ColumnarCipherTR(),
             "Polybius": PolybiusCipherTR(),
             "Hill": HillCipherTR(),
+            "DES": None,
         }
 
     
@@ -100,6 +102,14 @@ class Server:
             matrix = self._parse_hill_matrix(key1)
             self.algorithms[algorithm].key_matrix = matrix
             return self.algorithms[algorithm].encrypt(text)
+        elif algorithm == "DES":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
+            self.algorithms["DES"] = DESCipherTR(key1)
+            return self.algorithms["DES"].encrypt(text)
+
+
+
 
     def decrypt(self, algorithm, text, key1=None, key2=None):
         if algorithm == "Caesar":
@@ -133,8 +143,21 @@ class Server:
             if key1 is None or key1.strip() == "":
                 raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
             matrix = self._parse_hill_matrix(key1)
+            self.algorithms[algorithm] = HillCipherTR()   # her seferinde sıfırla
             self.algorithms[algorithm].key_matrix = matrix
             return self.algorithms[algorithm].decrypt(text)
+
+        elif algorithm == "DES":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
+            self.algorithms["DES"] = DESCipherTR(key1)
+            return self.algorithms["DES"].decrypt(text)
+
+        
+
+
+
+
 
 
 server = Server()
