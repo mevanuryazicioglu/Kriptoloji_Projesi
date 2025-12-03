@@ -32,7 +32,7 @@ class CryptoGUI:
 
         tk.Label(self.window, text="Algoritma Seç:").pack(pady=5)
         self.algorithm = tk.StringVar(value="")
-        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill", "DES").pack(pady=5)
+        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill", "DES", "AES").pack(pady=5)
         self.algorithm.trace("w", self.update_keys)
 
         self.key_frame = tk.Frame(self.window)
@@ -102,6 +102,11 @@ class CryptoGUI:
                 self.key1_entry.pack(pady=2)
                 self.key1_label.config(text="Anahtar (8 karakter)")
                 set_placeholder(self.key1_entry, "8 karakter girin")
+            elif algo == "AES":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="Anahtar (16/24/32 karakter)")
+                set_placeholder(self.key1_entry, "16, 24 veya 32 karakter girin")
 
 
 
@@ -189,6 +194,23 @@ class CryptoGUI:
                     self.result_label.config(text="Hata: DES anahtarı 8 karakter olmalıdır!")
                     return
                 payload["key1"] = key1
+            elif algo == "AES":
+                key1 = self.key1_entry.get().strip()
+                
+                if not key1:
+                    self.result_label.config(
+                        text="Hata: AES anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!"
+                    )
+                    return
+                
+                if len(key1) not in [16, 24, 32]:
+                    self.result_label.config(
+                        text="Hata: AES anahtarı yalnızca 16, 24 veya 32 karakter olabilir!"
+                    )
+                    return
+
+                payload["key1"] = key1
+
 
 
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
@@ -286,6 +308,19 @@ class CryptoGUI:
                     return
                 if len(key1) != 8:
                     self.result_label.config(text="Hata: DES anahtarı 8 karakter olmalıdır!")
+                    return
+                payload["key1"] = key1
+            elif algo == "AES":
+                key1 = self.key1_entry.get()
+                if not key1 or key1.strip() == "" or key1 == "16, 24 veya 32 karakter girin":
+                    self.result_label.config(
+                        text="Hata: AES anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!"
+                    )
+                    return
+                if len(key1) not in [16, 24, 32]:
+                    self.result_label.config(
+                        text="Hata: AES anahtarı yalnızca 16, 24 veya 32 karakter olabilir!"
+                    )
                     return
                 payload["key1"] = key1
 

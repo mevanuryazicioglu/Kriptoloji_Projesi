@@ -10,6 +10,7 @@ from algorithms.columnar import ColumnarCipherTR
 from algorithms.polybius import PolybiusCipherTR
 from algorithms.hill import HillCipherTR
 from algorithms.des import DESCipherTR
+from algorithms.aes import AESCipherTR
 import uvicorn
 import traceback
 import ast  
@@ -43,6 +44,7 @@ class Server:
             "Polybius": PolybiusCipherTR(),
             "Hill": HillCipherTR(),
             "DES": None,
+            "AES": None,
         }
 
     
@@ -107,6 +109,14 @@ class Server:
                 raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
             self.algorithms["DES"] = DESCipherTR(key1)
             return self.algorithms["DES"].encrypt(text)
+        elif algorithm == "AES":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
+            if len(key1) not in [16, 24, 32]:
+                raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
+            
+            self.algorithms["AES"] = AESCipherTR(key1)
+            return self.algorithms["AES"].encrypt(text)
 
 
 
@@ -143,7 +153,7 @@ class Server:
             if key1 is None or key1.strip() == "":
                 raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
             matrix = self._parse_hill_matrix(key1)
-            self.algorithms[algorithm] = HillCipherTR()   # her seferinde sıfırla
+            self.algorithms[algorithm] = HillCipherTR()   
             self.algorithms[algorithm].key_matrix = matrix
             return self.algorithms[algorithm].decrypt(text)
 
@@ -152,6 +162,15 @@ class Server:
                 raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
             self.algorithms["DES"] = DESCipherTR(key1)
             return self.algorithms["DES"].decrypt(text)
+        elif algorithm == "AES":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
+            if len(key1) not in [16, 24, 32]:
+                raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
+            
+            self.algorithms["AES"] = AESCipherTR(key1)
+            return self.algorithms["AES"].decrypt(text)
+
 
         
 
