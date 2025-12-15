@@ -1,4 +1,5 @@
 import tkinter as tk
+from algorithms.rsa import RSACipherTR
 import requests
 
 SERVER_URL = "http://127.0.0.1:8000"
@@ -32,7 +33,7 @@ class CryptoGUI:
 
         tk.Label(self.window, text="Algoritma Seç:").pack(pady=5)
         self.algorithm = tk.StringVar(value="")
-        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill", "DES", "AES").pack(pady=5)
+        tk.OptionMenu(self.window, self.algorithm, "Caesar", "Affine", "Vigenere", "Rail Fence", "Route", "Columnar", "Polybius", "Hill", "DES", "AES", "AES Kütüphaneli", "RSA", "DES Kütüphaneli").pack(pady=5)
         self.algorithm.trace("w", self.update_keys)
 
         self.key_frame = tk.Frame(self.window)
@@ -43,11 +44,14 @@ class CryptoGUI:
         self.key2_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
         self.key2_entry = tk.Entry(self.key_frame)
 
+        self.rsa_public_key = None
+        self.rsa_private_key = None
+
         self.result_label = tk.Label(self.window, text="", wraplength=400)
         self.result_label.pack(pady=10)
 
         tk.Button(self.window, text="Şifrele", width=20, command=self.encrypt_text).pack(pady=5)
-        tk.Button(self.window, text="Çöz", width=20, command=self.decrypt_text).pack(pady=5)
+        tk.Button(self.window, text="Deşifrele", width=20, command=self.decrypt_text).pack(pady=5)
         tk.Button(self.window, text="Temizle", width=20, command=self.clear_fields).pack(pady=5)
 
         self.window.mainloop()
@@ -107,6 +111,22 @@ class CryptoGUI:
                 self.key1_entry.pack(pady=2)
                 self.key1_label.config(text="Anahtar (16/24/32 karakter)")
                 set_placeholder(self.key1_entry, "16, 24 veya 32 karakter girin")
+            elif algo == "RSA":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="RSA anahtar çifti otomatik oluşturulur")
+                set_placeholder(self.key1_entry, "Şifreleme/deşifreleme için key girmenize gerek yok")
+            elif algo == "AES Kütüphaneli":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="Anahtar (16/24/32 karakter)")
+                set_placeholder(self.key1_entry, "16, 24 veya 32 karakter girin")
+            elif algo == "DES Kütüphaneli":
+                self.key1_label.pack()
+                self.key1_entry.pack(pady=2)
+                self.key1_label.config(text="Anahtar (8 karakter)")
+                set_placeholder(self.key1_entry, "8 karakter girin")
+
 
 
 
@@ -210,14 +230,56 @@ class CryptoGUI:
                     return
 
                 payload["key1"] = key1
+            
+            elif algo == "AES Kütüphaneli":
+                key1 = self.key1_entry.get().strip()
+                
+                if not key1:
+                    self.result_label.config(
+                        text="Hata: AES Kütüphaneli anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!"
+                    )
+                    return
+                
+                if len(key1) not in [16, 24, 32]:
+                    self.result_label.config(
+                        text="Hata: AES Kütüphaneli anahtarı yalnızca 16, 24 veya 32 karakter olabilir!"
+                    )
+                    return
 
-
+                payload["key1"] = key1
+            elif algo == "DES Kütüphaneli":
+                key1 = self.key1_entry.get().strip()
+                if not key1:
+                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı boş olamaz ve 8 karakter olmalı!")
+                    return
+                if len(key1) != 8:
+                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı 8 karakter olmalıdır!")
+                    return
+                payload["key1"] = key1
+            
+            elif algo == "RSA":
+                # RSA için key1 (genel anahtar) varsa gönder
+                rsa_key_input = self.key1_entry.get().strip()
+                if rsa_key_input and rsa_key_input != "Şifreleme/deşifreleme için key girmenize gerek yok":
+                    # Kullanıcı genel anahtar girdiyse bunu kullan
+                    try:
+                        # Anahtarı dict olarak ayrıştırmaya çalış
+                        payload["rsa_public_key"] = eval(rsa_key_input)
+                    except Exception:
+                        self.result_label.config(text="Hata: Geçersiz RSA genel anahtar formatı.")
+                        return
+                # payload'a rsa_private_key eklemeye gerek yok, sunucu oluşturacak
 
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
             
             if response.status_code == 200:
                 data = response.json()
                 result = data["result"]
+                if algo == "RSA" and data.get("public_key") and data.get("private_key"):
+                    self.rsa_public_key = data["public_key"]
+                    self.rsa_private_key = data["private_key"]
+                    self.result_label.config(text=f"Şifrelenmiş Metin: {result}\nAçık Anahtar: {self.rsa_public_key}\nÖzel Anahtar: {self.rsa_private_key}")
+                    return
             else:
                 result = f"Hata: {response.json().get('detail', 'Bilinmeyen hata')}"
         except requests.exceptions.ConnectionError:
@@ -323,6 +385,38 @@ class CryptoGUI:
                     )
                     return
                 payload["key1"] = key1
+
+            elif algo == "AES Kütüphaneli":
+                key1 = self.key1_entry.get().strip()
+                
+                if not key1:
+                    self.result_label.config(
+                        text="Hata: AES Kütüphaneli anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!"
+                    )
+                    return
+                
+                if len(key1) not in [16, 24, 32]:
+                    self.result_label.config(
+                        text="Hata: AES Kütüphaneli anahtarı yalnızca 16, 24 veya 32 karakter olabilir!"
+                    )
+                    return
+
+                payload["key1"] = key1
+            elif algo == "DES Kütüphaneli":
+                key1 = self.key1_entry.get().strip()
+                if not key1:
+                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı boş olamaz ve 8 karakter olmalı!")
+                    return
+                if len(key1) != 8:
+                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı 8 karakter olmalıdır!")
+                    return
+                payload["key1"] = key1
+
+            elif algo == "RSA":
+                if not self.rsa_private_key:
+                    self.result_label.config(text="Hata: RSA deşifreleme için özel anahtar bulunamadı. Önce şifreleme yapın.")
+                    return
+                payload["rsa_private_key"] = self.rsa_private_key
 
 
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)

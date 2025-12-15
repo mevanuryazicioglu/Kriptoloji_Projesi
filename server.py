@@ -10,7 +10,10 @@ from algorithms.columnar import ColumnarCipherTR
 from algorithms.polybius import PolybiusCipherTR
 from algorithms.hill import HillCipherTR
 from algorithms.des import DESCipherTR
+from algorithms.des_k import DESCipherTR as DESLibraryCipherTR # Kütüphaneli DES importu
 from algorithms.aes import AESCipherTR
+from algorithms.aes_k import AESCipherTR as AESLibraryCipherTR
+from algorithms.rsa import RSACipherTR
 import uvicorn
 import traceback
 import ast  
@@ -26,11 +29,15 @@ class CryptoRequest(BaseModel):
     text: str
     key1: Any = None
     key2: Optional[int] = None
+    rsa_public_key: Optional[dict] = None
+    rsa_private_key: Optional[dict] = None
 
 class CryptoResponse(BaseModel):
     result: str
     algorithm: str
     operation: str
+    public_key: Optional[dict] = None
+    private_key: Optional[dict] = None
 
 class Server:
     def __init__(self):
@@ -45,6 +52,9 @@ class Server:
             "Hill": HillCipherTR(),
             "DES": None,
             "AES": None,
+            "AES Kütüphaneli": None,
+            "RSA": None,
+            "DES Kütüphaneli": None,
         }
 
     
@@ -117,6 +127,39 @@ class Server:
             
             self.algorithms["AES"] = AESCipherTR(key1)
             return self.algorithms["AES"].encrypt(text)
+        elif algorithm == "AES Kütüphaneli":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
+            if len(key1) not in [16, 24, 32]:
+                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
+            
+            aes_lib_cipher = AESLibraryCipherTR(key1)
+            return aes_lib_cipher.encrypt(text)
+        elif algorithm == "DES Kütüphaneli":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
+            if len(key1) != 8:
+                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
+            
+            des_lib_cipher = DESLibraryCipherTR(key1)
+            return des_lib_cipher.encrypt(text)
+        elif algorithm == "RSA":
+            public_key = key1 if isinstance(key1, dict) and "e" in key1 and "n" in key1 else None
+            
+            if public_key:
+                rsa_cipher = RSACipherTR.from_keys(public_key)
+                cipher_text = rsa_cipher.encrypt(text)
+                return {"cipher": cipher_text, "public": public_key, "private": None} # Özel anahtarı geri döndürmüyoruz
+            else:
+                rsa_cipher = RSACipherTR()
+                cipher_text = rsa_cipher.encrypt(text)
+                return {
+                    "cipher": cipher_text,
+                    "public": rsa_cipher.export_public(),
+                    "private": rsa_cipher.export_private()
+                }
+
+
 
 
 
@@ -170,6 +213,35 @@ class Server:
             
             self.algorithms["AES"] = AESCipherTR(key1)
             return self.algorithms["AES"].decrypt(text)
+        elif algorithm == "AES Kütüphaneli":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
+            if len(key1) not in [16, 24, 32]:
+                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
+            
+            aes_lib_cipher = AESLibraryCipherTR(key1)
+            return aes_lib_cipher.decrypt(text)
+        elif algorithm == "DES Kütüphaneli":
+            if key1 is None or key1.strip() == "":
+                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
+            if len(key1) != 8:
+                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
+            
+            des_lib_cipher = DESLibraryCipherTR(key1)
+            return des_lib_cipher.decrypt(text)
+        elif algorithm == "RSA":
+            if key1 is None:
+                raise HTTPException(status_code=400, detail="RSA decrypt için private key (key1) gerekli")
+            
+            private_key_components = key1 # key1 artık doğrudan private_key_components olarak düşünülüyor
+
+            try:
+                rsa_cipher = RSACipherTR.from_keys(private_key_components)
+                return rsa_cipher.decrypt(text)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"RSA private key formatı hatalı veya deşifreleme başarısız: {e}")
+
+
 
 
         
@@ -185,23 +257,41 @@ server = Server()
 async def process_crypto(request: CryptoRequest):
     try:
         if request.operation == "encrypt":
-            result = server.encrypt(request.algorithm, request.text, request.key1, request.key2)
+            if request.algorithm == "RSA":
+                result = server.encrypt(request.algorithm, request.text, request.rsa_public_key)
+            else:
+                result = server.encrypt(request.algorithm, request.text, request.key1, request.key2)
         elif request.operation == "decrypt":
-            result = server.decrypt(request.algorithm, request.text, request.key1, request.key2)
+            if request.algorithm == "RSA":
+                result = server.decrypt(request.algorithm, request.text, request.rsa_private_key)
+            else:
+                result = server.decrypt(request.algorithm, request.text, request.key1, request.key2)
         else:
             raise HTTPException(status_code=400, detail="Invalid operation. Use 'encrypt' or 'decrypt'")
-        
+
         if result is None:
             raise HTTPException(status_code=400, detail="Encryption/Decryption failed")
-        
+
+        # Eğer RSA encrypt dict döndürdüyse burayı ayarla:
+        if isinstance(result, dict) and request.algorithm == "RSA" and request.operation == "encrypt":
+            return CryptoResponse(
+                result=result["cipher"],
+                algorithm=request.algorithm,
+                operation=request.operation,
+                public_key=result.get("public"),
+                private_key=result.get("private")
+            )
+
+        # Normal (string) durum
         return CryptoResponse(
-            result=result,
+            result=str(result),
             algorithm=request.algorithm,
             operation=request.operation
         )
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e)) from e
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

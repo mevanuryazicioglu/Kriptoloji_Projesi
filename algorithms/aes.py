@@ -43,9 +43,20 @@ class AESCipherTR:
     ]
 
     def __init__(self,key):
-        if len(key)!=16: raise ValueError("16 karakter olmalı")
+        key_len = len(key)
+        if key_len == 16: # 128 bit
+            self.Nk = 4
+            self.Nr = 10
+        elif key_len == 24: # 192 bit
+            self.Nk = 6
+            self.Nr = 12
+        elif key_len == 32: # 256 bit
+            self.Nk = 8
+            self.Nr = 14
+        else:
+            raise ValueError("Anahtar 16, 24 veya 32 karakter olmalı (128, 192 veya 256 bit)")
         self.key=[ord(c) for c in key]
-        self.Nb=4; self.Nk=4; self.Nr=10
+        self.Nb=4; 
         self.round_keys=self.key_expansion()
 
     def key_expansion(self):
@@ -108,6 +119,18 @@ class AESCipherTR:
         self.add_round_key(state,0)
         return [state[r][c] for c in range(4) for r in range(4)]
 
+    def _pad(self,plaintext):
+        padding_len = 16 - (len(plaintext) % 16)
+        padding = [padding_len] * padding_len
+        return plaintext + bytes(padding)
+
+    def _unpad(self,padded_text):
+        padding_len = padded_text[-1]
+        if padding_len < 1 or padding_len > 16:
+            # Geçersiz doldurma, orijinal metni döndürmeyi dene
+            return padded_text
+        return padded_text[:-padding_len]
+
     def xtime(self,a): return ((a<<1)^0x1B)&0xFF if (a&0x80) else (a<<1)&0xFF
     def mix_single_column(self,a):
         t=a[0]^a[1]^a[2]^a[3]
@@ -140,20 +163,23 @@ class AESCipherTR:
             b>>=1
         return res
 
-    def encrypt(self,plaintext):
-        if len(plaintext)%16!=0: plaintext+="X"*(16-len(plaintext)%16)
-        result=""
-        for i in range(0,len(plaintext),16):
-            block=[ord(c) for c in plaintext[i:i+16]]
-            enc=self.encrypt_block(block)
-            result+="".join(f"{b:02X}" for b in enc)
-        return result
+    def encrypt(self,plaintext_str):
+        plaintext_bytes = self._pad(plaintext_str.encode('utf-8'))
+        result_bytes = bytearray()
+        for i in range(0,len(plaintext_bytes),16):
+            block_bytes = plaintext_bytes[i:i+16]
+            block_list = [b for b in block_bytes]
+            enc_list = self.encrypt_block(block_list)
+            result_bytes.extend(enc_list)
+        return result_bytes.hex()
 
     def decrypt(self,ciphertext_hex):
-        if len(ciphertext_hex)%32!=0: raise ValueError("Geçersiz şifreli metin")
-        result=""
-        for i in range(0,len(ciphertext_hex),32):
-            block=[int(ciphertext_hex[j:j+2],16) for j in range(i,i+32,2)]
-            dec=self.decrypt_block(block)
-            result+="".join(chr(b) for b in dec)
-        return result.rstrip("X")
+        ciphertext_bytes = bytes.fromhex(ciphertext_hex)
+        result_bytes = bytearray()
+        for i in range(0,len(ciphertext_bytes),16):
+            block_bytes = ciphertext_bytes[i:i+16]
+            block_list = [b for b in block_bytes]
+            dec_list = self.decrypt_block(block_list)
+            result_bytes.extend(dec_list)
+        unpadded_bytes = self._unpad(bytes(result_bytes))
+        return unpadded_bytes.decode('utf-8')
