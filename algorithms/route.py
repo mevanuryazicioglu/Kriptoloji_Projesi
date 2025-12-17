@@ -52,4 +52,6 @@ class RouteCipherTR:
             for c in range(self.cols):
                 result += matrix[r][c]
 
-        return result
+        # Encrypt tarafı kısa metinleri 'X' ile dolduruyor; deşifre sonrası sondaki dolgu
+        # karakterlerini temizle.
+        return result.rstrip("X")

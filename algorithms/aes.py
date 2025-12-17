@@ -1,3 +1,4 @@
+import re
 class AESCipherTR:
     SBOX = [
         0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
@@ -133,11 +134,13 @@ class AESCipherTR:
 
     def xtime(self,a): return ((a<<1)^0x1B)&0xFF if (a&0x80) else (a<<1)&0xFF
     def mix_single_column(self,a):
-        t=a[0]^a[1]^a[2]^a[3]
-        u=a[0]; a[0]^=t^self.xtime(a[0]^a[1])
-        a[1]^=t^self.xtime(a[1]^a[2])
-        a[2]^=t^self.xtime(a[2]^a[3])
-        a[3]^=t^self.xtime(a[3]^a[0])
+        a0, a1, a2, a3 = a[0], a[1], a[2], a[3]
+        t = a0 ^ a1 ^ a2 ^ a3
+        a[0] = (a0 ^ t ^ self.xtime(a0 ^ a1)) & 0xFF
+        a[1] = (a1 ^ t ^ self.xtime(a1 ^ a2)) & 0xFF
+        a[2] = (a2 ^ t ^ self.xtime(a2 ^ a3)) & 0xFF
+        a[3] = (a3 ^ t ^ self.xtime(a3 ^ a0)) & 0xFF
+
     def mix_columns(self,state):
         for c in range(4):
             col=[state[r][c] for r in range(4)]
@@ -173,13 +176,27 @@ class AESCipherTR:
             result_bytes.extend(enc_list)
         return result_bytes.hex()
 
-    def decrypt(self,ciphertext_hex):
-        ciphertext_bytes = bytes.fromhex(ciphertext_hex)
+    def decrypt(self, ciphertext_hex):
+        text = (ciphertext_hex or "").strip()
+        text = re.sub(r'[^0-9a-fA-F]', '', text)
+
+        # 2) doğrulama
+        if len(text) == 0:
+            raise ValueError("Şifreli metin boş.")
+        if len(text) % 2 != 0:
+            raise ValueError("Şifreli metin hex olmalı ve uzunluğu çift olmalı.")
+
+        # 3) hex -> bytes
+        ciphertext_bytes = bytes.fromhex(text)
+
+        # 4) AES blok blok çöz
         result_bytes = bytearray()
-        for i in range(0,len(ciphertext_bytes),16):
+        for i in range(0, len(ciphertext_bytes), 16):
             block_bytes = ciphertext_bytes[i:i+16]
-            block_list = [b for b in block_bytes]
+            block_list = list(block_bytes)
             dec_list = self.decrypt_block(block_list)
             result_bytes.extend(dec_list)
+
+        # 5) padding temizle ve yazıya çevir
         unpadded_bytes = self._unpad(bytes(result_bytes))
-        return unpadded_bytes.decode('utf-8')
+        return unpadded_bytes.decode("utf-8", errors="replace")

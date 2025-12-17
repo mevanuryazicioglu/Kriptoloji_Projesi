@@ -20,7 +20,6 @@ import ast
 import numpy as np
 
 
-
 app = FastAPI()
 
 class CryptoRequest(BaseModel):
@@ -81,173 +80,178 @@ class Server:
 
 
     def encrypt(self, algorithm, text, key1=None, key2=None):
-        if algorithm == "Caesar":
-            if key1 is not None:
-                self.algorithms[algorithm].shift = key1
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Vigenere":
-            if key1 is not None:
-                self.algorithms[algorithm].key = key1
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Affine":
-            if key1 is not None and key2 is not None:
-                self.algorithms[algorithm].a = key1
-                self.algorithms[algorithm].b = key2
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Rail Fence":
-            if key1 is not None:
-                self.algorithms[algorithm].rails = int(key1)
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Route":
-            if key1 is not None:
-                self.algorithms[algorithm].cols = int(key1)
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Columnar":
-            if key1 is not None:
-                self.algorithms[algorithm].key = str(key1)
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Polybius":
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "Hill":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
-            matrix = self._parse_hill_matrix(key1)
-            self.algorithms[algorithm].key_matrix = matrix
-            return self.algorithms[algorithm].encrypt(text)
-        elif algorithm == "DES":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
-            self.algorithms["DES"] = DESCipherTR(key1)
-            return self.algorithms["DES"].encrypt(text)
-        elif algorithm == "AES":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
-            if len(key1) not in [16, 24, 32]:
-                raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
-            
-            self.algorithms["AES"] = AESCipherTR(key1)
-            return self.algorithms["AES"].encrypt(text)
-        elif algorithm == "AES Kütüphaneli":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
-            if len(key1) not in [16, 24, 32]:
-                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
-            
-            aes_lib_cipher = AESLibraryCipherTR(key1)
-            return aes_lib_cipher.encrypt(text)
-        elif algorithm == "DES Kütüphaneli":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
-            if len(key1) != 8:
-                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
-            
-            des_lib_cipher = DESLibraryCipherTR(key1)
-            return des_lib_cipher.encrypt(text)
-        elif algorithm == "RSA":
-            public_key = key1 if isinstance(key1, dict) and "e" in key1 and "n" in key1 else None
-            
-            if public_key:
-                rsa_cipher = RSACipherTR.from_keys(public_key)
-                cipher_text = rsa_cipher.encrypt(text)
-                return {"cipher": cipher_text, "public": public_key, "private": None} # Özel anahtarı geri döndürmüyoruz
+        try:
+            if algorithm == "Caesar":
+                if key1 is not None:
+                    self.algorithms[algorithm].shift = key1
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Vigenere":
+                if key1 is not None:
+                    self.algorithms[algorithm].key = key1
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Affine":
+                if key1 is not None and key2 is not None:
+                    self.algorithms[algorithm].a = key1
+                    self.algorithms[algorithm].b = key2
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Rail Fence":
+                if key1 is not None:
+                    self.algorithms[algorithm].rails = int(key1)
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Route":
+                if key1 is not None:
+                    self.algorithms[algorithm].cols = int(key1)
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Columnar":
+                if key1 is not None:
+                    self.algorithms[algorithm].key = str(key1)
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Polybius":
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "Hill":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
+                matrix = self._parse_hill_matrix(key1)
+                self.algorithms[algorithm].key_matrix = matrix
+                return self.algorithms[algorithm].encrypt(text)
+            elif algorithm == "DES":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
+                self.algorithms["DES"] = DESCipherTR(key1)
+                return self.algorithms["DES"].encrypt(text)
+            elif algorithm == "AES":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
+                if len(key1) not in [16, 24, 32]:
+                    raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
+                
+                self.algorithms["AES"] = AESCipherTR(key1)
+                return self.algorithms["AES"].encrypt(text)
+            elif algorithm == "AES Kütüphaneli":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
+                if len(key1) not in [16, 24, 32]:
+                    raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
+                
+                aes_lib_cipher = AESLibraryCipherTR(key1)
+                return aes_lib_cipher.encrypt(text)
+            elif algorithm == "DES Kütüphaneli":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
+                if len(key1) != 8:
+                    raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
+                
+                des_lib_cipher = DESLibraryCipherTR(key1)
+                return des_lib_cipher.encrypt(text)
+            elif algorithm == "RSA":
+                public_key = key1 if isinstance(key1, dict) and "e" in key1 and "n" in key1 else None
+                
+                if public_key:
+                    rsa_cipher = RSACipherTR.from_keys(public_key)
+                    cipher_text = rsa_cipher.encrypt(text)
+                    return {"cipher": cipher_text, "public": public_key, "private": None} # Özel anahtarı geri döndürmüyoruz
+                else:
+                    rsa_cipher = RSACipherTR()
+                    cipher_text = rsa_cipher.encrypt(text)
+                    return {
+                        "cipher": cipher_text,
+                        "public": rsa_cipher.export_public(),
+                        "private": rsa_cipher.export_private()
+                    }
             else:
-                rsa_cipher = RSACipherTR()
-                cipher_text = rsa_cipher.encrypt(text)
-                return {
-                    "cipher": cipher_text,
-                    "public": rsa_cipher.export_public(),
-                    "private": rsa_cipher.export_private()
-                }
-
-
-
+                raise HTTPException(status_code=400, detail="Geçersiz algoritma seçimi")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Şifreleme hatası: {e}")
+        except Exception as e:
+            # Diğer beklenmeyen hatalar için genel yakalama
+            traceback.print_exc() # Hata izini logla
+            raise HTTPException(status_code=400, detail=f"Beklenmeyen bir şifreleme hatası oluştu: {e}")
 
 
 
     def decrypt(self, algorithm, text, key1=None, key2=None):
-        if algorithm == "Caesar":
-            if key1 is not None:
-                self.algorithms[algorithm].shift = key1
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Vigenere":
-            if key1 is not None:
-                self.algorithms[algorithm].key = key1
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Affine":
-            if key1 is not None and key2 is not None:
-                self.algorithms[algorithm].a = key1
-                self.algorithms[algorithm].b = key2
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Rail Fence":
-            if key1 is not None:
-                self.algorithms[algorithm].rails = int(key1)
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Route":
-            if key1 is not None:
-                self.algorithms[algorithm].cols = int(key1)
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Columnar":
-            if key1 is not None:
-                self.algorithms[algorithm].key = str(key1)
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Polybius":
-            return self.algorithms[algorithm].decrypt(text)
-        elif algorithm == "Hill":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
-            matrix = self._parse_hill_matrix(key1)
-            self.algorithms[algorithm] = HillCipherTR()   
-            self.algorithms[algorithm].key_matrix = matrix
-            return self.algorithms[algorithm].decrypt(text)
+        try:
+            if algorithm == "Caesar":
+                if key1 is not None:
+                    self.algorithms[algorithm].shift = key1
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Vigenere":
+                if key1 is not None:
+                    self.algorithms[algorithm].key = key1
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Affine":
+                if key1 is not None and key2 is not None:
+                    self.algorithms[algorithm].a = key1
+                    self.algorithms[algorithm].b = key2
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Rail Fence":
+                if key1 is not None:
+                    self.algorithms[algorithm].rails = int(key1)
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Route":
+                if key1 is not None:
+                    self.algorithms[algorithm].cols = int(key1)
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Columnar":
+                if key1 is not None:
+                    self.algorithms[algorithm].key = str(key1)
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Polybius":
+                return self.algorithms[algorithm].decrypt(text)
+            elif algorithm == "Hill":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="Hill anahtar matrisi boş olamaz")
+                matrix = self._parse_hill_matrix(key1)
+                # HillCipherTR nesnesini doğrudan anahtar matrisiyle oluştur
+                hill_cipher = HillCipherTR(key_matrix=matrix)
+                return hill_cipher.decrypt(text)
+            elif algorithm == "DES":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
+                self.algorithms["DES"] = DESCipherTR(key1)
+                return self.algorithms["DES"].decrypt(text)
+            elif algorithm == "AES":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
+                if len(key1) not in [16, 24, 32]:
+                    raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
+                
+                self.algorithms["AES"] = AESCipherTR(key1)
+                return self.algorithms["AES"].decrypt(text)
+            elif algorithm == "AES Kütüphaneli":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
+                if len(key1) not in [16, 24, 32]:
+                    raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
+                
+                aes_lib_cipher = AESLibraryCipherTR(key1)
+                return aes_lib_cipher.decrypt(text)
+            elif algorithm == "DES Kütüphaneli":
+                if key1 is None or key1.strip() == "":
+                    raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
+                if len(key1) != 8:
+                    raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
+                
+                des_lib_cipher = DESLibraryCipherTR(key1)
+                return des_lib_cipher.decrypt(text)
+            elif algorithm == "RSA":
+                if key1 is None:
+                    raise HTTPException(status_code=400, detail="RSA deşifreleme için özel anahtar (key1) gerekli")
+                
+                private_key_components = key1 
 
-        elif algorithm == "DES":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="DES anahtarı boş olamaz")
-            self.algorithms["DES"] = DESCipherTR(key1)
-            return self.algorithms["DES"].decrypt(text)
-        elif algorithm == "AES":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="AES anahtarı boş olamaz")
-            if len(key1) not in [16, 24, 32]:
-                raise HTTPException(status_code=400, detail="AES anahtarı 16, 24 veya 32 karakter olmalı")
-            
-            self.algorithms["AES"] = AESCipherTR(key1)
-            return self.algorithms["AES"].decrypt(text)
-        elif algorithm == "AES Kütüphaneli":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı boş olamaz")
-            if len(key1) not in [16, 24, 32]:
-                raise HTTPException(status_code=400, detail="AES Kütüphaneli anahtarı 16, 24 veya 32 karakter olmalı")
-            
-            aes_lib_cipher = AESLibraryCipherTR(key1)
-            return aes_lib_cipher.decrypt(text)
-        elif algorithm == "DES Kütüphaneli":
-            if key1 is None or key1.strip() == "":
-                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı boş olamaz")
-            if len(key1) != 8:
-                raise HTTPException(status_code=400, detail="DES Kütüphaneli anahtarı 8 karakter olmalı")
-            
-            des_lib_cipher = DESLibraryCipherTR(key1)
-            return des_lib_cipher.decrypt(text)
-        elif algorithm == "RSA":
-            if key1 is None:
-                raise HTTPException(status_code=400, detail="RSA decrypt için private key (key1) gerekli")
-            
-            private_key_components = key1 # key1 artık doğrudan private_key_components olarak düşünülüyor
-
-            try:
-                rsa_cipher = RSACipherTR.from_keys(private_key_components)
-                return rsa_cipher.decrypt(text)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"RSA private key formatı hatalı veya deşifreleme başarısız: {e}")
-
-
-
-
-        
-
-
-
+                try:
+                    rsa_cipher = RSACipherTR.from_keys(private_key_components)
+                    return rsa_cipher.decrypt(text)
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"RSA private key formatı hatalı veya deşifreleme başarısız: {e}")
+            else:
+                raise HTTPException(status_code=400, detail="Geçersiz algoritma seçimi")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Deşifreleme hatası: {e}")
+        except Exception as e:
+            traceback.print_exc()
+            raise HTTPException(status_code=400, detail=f"Beklenmeyen bir deşifreleme hatası oluştu: {e}")
 
 
 
@@ -289,8 +293,7 @@ async def process_crypto(request: CryptoRequest):
             operation=request.operation
         )
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail=f"Hata oluştu: {str(e)}\nDetay: {traceback.format_exc()}") from e
 
 
 if __name__ == "__main__":
