@@ -61,16 +61,19 @@ class AESCipherTR:
         self.round_keys=self.key_expansion()
 
     def key_expansion(self):
-        w=[]
+        w = []
         for i in range(self.Nk):
             w.append(self.key[4*i:4*(i+1)])
-        for i in range(self.Nk,self.Nb*(self.Nr+1)):
-            temp=w[i-1][:]
-            if i%self.Nk==0:
-                temp=self.sub_word(self.rot_word(temp))
-                temp[0]^=self.RCON[(i//self.Nk)-1]
-            w.append([ (w[i-self.Nk][j]^temp[j])&0xFF for j in range(4)])
+        for i in range(self.Nk, self.Nb*(self.Nr+1)):
+            temp = w[i-1][:]
+            if i % self.Nk == 0:
+                temp = self.sub_word(self.rot_word(temp))
+                temp[0] ^= self.RCON[(i//self.Nk)-1]
+            elif self.Nk > 6 and (i % self.Nk) == 4:
+                temp = self.sub_word(temp)   # ✅ AES-256 kuralı
+            w.append([(w[i-self.Nk][j] ^ temp[j]) & 0xFF for j in range(4)])
         return w
+
 
     def sub_word(self,word): return [self.SBOX[b] for b in word]
     def rot_word(self,word): return word[1:]+word[:1]
