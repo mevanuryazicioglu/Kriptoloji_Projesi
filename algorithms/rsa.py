@@ -1,4 +1,3 @@
-# algorithms/rsa.py
 import random
 
 
@@ -9,7 +8,6 @@ class RSACipherTR:
         self.key_size = key_size
         self.p = self._generate_prime(key_size // 2)
         self.q = self._generate_prime(key_size // 2)
-        # ensure p != q
         while self.q == self.p:
             self.q = self._generate_prime(key_size // 2)
         self.n = self.p * self.q

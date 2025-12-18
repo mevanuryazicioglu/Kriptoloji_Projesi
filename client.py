@@ -46,8 +46,28 @@ class CryptoWindow:
         self.key2_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
         self.key2_entry = tk.Entry(self.key_frame, width=50)
         
-        self.result_label = tk.Label(self.window, text="", wraplength=450)
-        self.result_label.pack(pady=10)
+        
+        tk.Label(self.window, text="Sonuç:", font=("Arial", 9)).pack(pady=(10, 3))
+
+        result_frame = tk.Frame(self.window)
+        result_frame.pack(padx=12, pady=(0, 10), fill="both", expand=True)
+
+        self.result_text = tk.Text(
+            result_frame,
+            height=8,
+            wrap="word",
+            font=("Arial", 10),
+            relief="solid",
+            borderwidth=1
+        )
+        self.result_text.pack(side="left", fill="both", expand=True)
+
+        result_scroll = tk.Scrollbar(result_frame, command=self.result_text.yview)
+        result_scroll.pack(side="right", fill="y")
+        self.result_text.config(yscrollcommand=result_scroll.set)
+
+        self.result_text.config(state="disabled")
+
 
         if self.operation_type == "encrypt":
             tk.Button(self.window, text="Şifrele", width=20, command=self.process_text).pack(pady=5)
@@ -67,6 +87,7 @@ class CryptoWindow:
         self.key2_entry.pack_forget()
         self.key1_entry.delete(0, tk.END)
         self.key2_entry.delete(0, tk.END)
+        
         
         if not algo:
             return
@@ -133,18 +154,28 @@ class CryptoWindow:
                 else: # decrypt
                     self.key1_label.config(text="RSA Özel Anahtar")
                     set_placeholder(self.key1_entry, "Deşifreleme için özel anahtar girin (örn: {'d':..., 'n':...})")
+    
+    def set_result(self, text: str):
+        self.result_text.config(state="normal")
+        self.result_text.delete("1.0", tk.END)
+        self.result_text.insert(tk.END, text)
+        self.result_text.config(state="disabled")
+
 
     def process_text(self):
+        if getattr(self, "_busy", False):
+            return
+        self._busy = True
         text = self.input_text.get()
         algo = self.algorithm.get()
-        
+    
         try:
             if not algo:
-                self.result_label.config(text="Hata: Algoritma seçilmedi!")
+                self.set_result(text="Hata: Algoritma seçilmedi!")
                 return
             
             if not text or text.strip() == "":
-                self.result_label.config(text="Hata: Metin alanı boş olamaz!")
+                self.set_result(text="Hata: Metin alanı boş olamaz!")
                 return
             
             payload = {
@@ -159,73 +190,73 @@ class CryptoWindow:
 
             if algo == "Caesar":
                 if not key1_str or key1_str == "Sayı girin":
-                    self.result_label.config(text="Hata: Anahtar 1 boş olamaz!")
+                    self.set_result(text="Hata: Anahtar 1 boş olamaz!")
                     return
                 payload["key1"] = int(key1_str)
             elif algo == "Affine":
                 if not key1_str or key1_str == "Sayı girin":
-                    self.result_label.config(text="Hata: Anahtar 1 boş olamaz!")
+                    self.set_result(text="Hata: Anahtar 1 boş olamaz!")
                     return
                 if not key2_str or key2_str == "Sayı girin":
-                    self.result_label.config(text="Hata: Anahtar 2 boş olamaz!")
+                    self.set_result(text="Hata: Anahtar 2 boş olamaz!")
                     return
                 payload["key1"] = int(key1_str)
                 payload["key2"] = int(key2_str)
             elif algo == "Vigenere":
                 if not key1_str or key1_str == "Kelime girin":
-                    self.result_label.config(text="Hata: Anahtar 1 boş olamaz!")
+                    self.set_result(text="Hata: Anahtar 1 boş olamaz!")
                     return
                 payload["key1"] = key1_str
             elif algo == "Rail Fence":
                 if not key1_str or key1_str == "Sayı girin":
-                    self.result_label.config(text="Hata: Ray sayısı boş olamaz!")
+                    self.set_result(text="Hata: Ray sayısı boş olamaz!")
                     return
                 payload["key1"] = int(key1_str)
             elif algo == "Route":
                 if not key1_str or key1_str == "Sayı girin":
-                    self.result_label.config(text="Hata: Sütun sayısı boş olamaz!")
+                    self.set_result(text="Hata: Sütun sayısı boş olamaz!")
                     return
                 payload["key1"] = int(key1_str)
             elif algo == "Columnar":
                 if not key1_str or key1_str == "Kelime girin":
-                    self.result_label.config(text="Hata: Anahtar kelime boş olamaz!")
+                    self.set_result(text="Hata: Anahtar kelime boş olamaz!")
                     return
                 payload["key1"] = key1_str
             elif algo == "Hill":
                 if not key1_str or key1_str == "2x2 veya 3x3 matrisi girin":
-                    self.result_label.config(text="Hata: Anahtar matris boş olamaz!")
+                    self.set_result(text="Hata: Anahtar matris boş olamaz!")
                     return
                 payload["key1"] = key1_str
             elif algo == "DES":
                 if not key1_str or key1_str == "8 karakter girin":
-                    self.result_label.config(text="Hata: Anahtar boş olamaz ve 8 karakter olmalı!")
+                    self.set_result(text="Hata: Anahtar boş olamaz ve 8 karakter olmalı!")
                     return
                 if len(key1_str) != 8:
-                    self.result_label.config(text="Hata: DES anahtarı 8 karakter olmalıdır!")
+                    self.set_result(text="Hata: DES anahtarı 8 karakter olmalıdır!")
                     return
                 payload["key1"] = key1_str
             elif algo == "AES":
                 if not key1_str or key1_str == "16, 24 veya 32 karakter girin":
-                    self.result_label.config(text="Hata: AES anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!")
+                    self.set_result(text="Hata: AES anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!")
                     return
                 if len(key1_str) not in [16, 24, 32]:
-                    self.result_label.config(text="Hata: AES anahtarı yalnızca 16, 24 veya 32 karakter olabilir!")
+                    self.set_result(text="Hata: AES anahtarı yalnızca 16, 24 veya 32 karakter olabilir!")
                     return
                 payload["key1"] = key1_str
             elif algo == "AES Kütüphaneli":
                 if not key1_str or key1_str == "16, 24 veya 32 karakter girin":
-                    self.result_label.config(text="Hata: AES Kütüphaneli anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!")
+                    self.set_result(text="Hata: AES Kütüphaneli anahtarı boş olamaz ve 16, 24 veya 32 karakter olmalı!")
                     return
                 if len(key1_str) not in [16, 24, 32]:
-                    self.result_label.config(text="Hata: AES Kütüphaneli anahtarı yalnızca 16, 24 veya 32 karakter olabilir!")
+                    self.set_result(text="Hata: AES Kütüphaneli anahtarı yalnızca 16, 24 veya 32 karakter olabilir!")
                     return
                 payload["key1"] = key1_str
             elif algo == "DES Kütüphaneli":
                 if not key1_str or key1_str == "8 karakter girin":
-                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı boş olamaz ve 8 karakter olmalı!")
+                    self.set_result(text="Hata: DES Kütüphaneli anahtarı boş olamaz ve 8 karakter olmalı!")
                     return
                 if len(key1_str) != 8:
-                    self.result_label.config(text="Hata: DES Kütüphaneli anahtarı 8 karakter olmalıdır!")
+                    self.set_result(text="Hata: DES Kütüphaneli anahtarı 8 karakter olmalıdır!")
                     return
                 payload["key1"] = key1_str
             elif algo == "RSA":
@@ -234,16 +265,16 @@ class CryptoWindow:
                         try:
                             payload["rsa_public_key"] = eval(key1_str)
                         except Exception:
-                            self.result_label.config(text="Hata: Geçersiz RSA genel anahtar formatı.")
+                            self.set_result(text="Hata: Geçersiz RSA genel anahtar formatı.")
                             return
                 else: # decrypt
                     if not key1_str or key1_str == "Deşifreleme için özel anahtar girin (örn: {'d':..., 'n':...})":
-                         self.result_label.config(text="Hata: RSA deşifreleme için özel anahtar boş olamaz!")
+                         self.set_result(text="Hata: RSA deşifreleme için özel anahtar boş olamaz!")
                          return
                     try:
                         payload["rsa_private_key"] = eval(key1_str)
                     except Exception:
-                        self.result_label.config(text="Hata: Geçersiz RSA özel anahtar formatı.")
+                        self.set_result(text="Hata: Geçersiz RSA özel anahtar formatı.")
                         return
                     
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
@@ -257,24 +288,25 @@ class CryptoWindow:
                         private_key = data.get("private_key")
                         if public_key and private_key and self.rsa_keys_manager:
                             self.rsa_keys_manager.set_keys(public_key, private_key)
-                        self.result_label.config(text=f"Şifrelenmiş Metin: {result}\nAçık Anahtar: {public_key}\nÖzel Anahtar: {private_key}")
+                        self.set_result(text=f"Şifrelenmiş Metin: {result}\nAçık Anahtar: {public_key}\nÖzel Anahtar: {private_key}")
                     else: # decrypt
-                        self.result_label.config(text=f"Deşifrelenmiş Metin: {result}")
+                        self.set_result(text=f"Deşifrelenmiş Metin: {result}")
                 else:
-                    self.result_label.config(text=f"Sonuç: {result}")
+                    self.set_result(text=f"Sonuç: {result}")
             else:
                 error_detail = response.json().get('detail', 'Bilinmeyen hata')
-                self.result_label.config(text=f"Hata: {error_detail}")
+                self.set_result(text=f"Hata: {error_detail}")
         except requests.exceptions.ConnectionError:
-            self.result_label.config(text="Hata: Sunucuya bağlanılamadı. Sunucunun çalıştığından emin olun.")
+            self.set_result(text="Hata: Sunucuya bağlanılamadı. Sunucunun çalıştığından emin olun.")
         except Exception as e:
-            self.result_label.config(text=f"Uygulama Hatası: {e}")
+            self.set_result(text=f"Uygulama Hatası: {e}")
 
     def clear_fields(self):
         self.input_text.delete(0, tk.END)
         self.key1_entry.delete(0, tk.END)
         self.key2_entry.delete(0, tk.END)
-        self.result_label.config(text="")
+        self.set_result(text="")
+
 
 class RSAKeyManager:
     def __init__(self):
@@ -290,6 +322,7 @@ class RSAKeyManager:
 
     def get_private_key(self):
         return self._private_key
+    
 
 # Main execution block to open both windows directly
 if __name__ == "__main__":
