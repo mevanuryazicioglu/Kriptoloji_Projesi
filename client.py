@@ -5,6 +5,15 @@ import requests
 SERVER_URL = "http://127.0.0.1:8000"
 
 def set_placeholder(entry, text):
+    # Unbind old handlers to avoid duplicate bindings
+    try:
+        entry.unbind("<FocusIn>")
+        entry.unbind("<FocusOut>")
+    except:
+        pass
+    
+    # Clear entry first
+    entry.delete(0, tk.END)
     entry.insert(0, text)
     entry.config(fg='gray')
 
@@ -85,9 +94,17 @@ class CryptoWindow:
         self.key1_entry.pack_forget()
         self.key2_label.pack_forget()
         self.key2_entry.pack_forget()
+        
+        # Clear entries and unbind to reset placeholders properly
         self.key1_entry.delete(0, tk.END)
         self.key2_entry.delete(0, tk.END)
-        
+        try:
+            self.key1_entry.unbind("<FocusIn>")
+            self.key1_entry.unbind("<FocusOut>")
+            self.key2_entry.unbind("<FocusIn>")
+            self.key2_entry.unbind("<FocusOut>")
+        except:
+            pass
         
         if not algo:
             return
@@ -300,12 +317,46 @@ class CryptoWindow:
             self.set_result(text="Hata: Sunucuya bağlanılamadı. Sunucunun çalıştığından emin olun.")
         except Exception as e:
             self.set_result(text=f"Uygulama Hatası: {e}")
+        finally:
+            self._busy = False
 
     def clear_fields(self):
         self.input_text.delete(0, tk.END)
         self.key1_entry.delete(0, tk.END)
         self.key2_entry.delete(0, tk.END)
         self.set_result(text="")
+        
+        # Restore placeholders if algorithm is selected
+        algo = self.algorithm.get()
+        if algo and algo != "Polybius":
+            if algo == "Caesar":
+                set_placeholder(self.key1_entry, "Sayı girin")
+            elif algo == "Affine":
+                set_placeholder(self.key1_entry, "Sayı girin")
+                set_placeholder(self.key2_entry, "Sayı girin")
+            elif algo == "Vigenere":
+                set_placeholder(self.key1_entry, "Kelime girin")
+            elif algo == "Rail Fence":
+                set_placeholder(self.key1_entry, "Sayı girin")
+            elif algo == "Route":
+                set_placeholder(self.key1_entry, "Sayı girin")
+            elif algo == "Columnar":
+                set_placeholder(self.key1_entry, "Kelime girin")
+            elif algo == "Hill":
+                set_placeholder(self.key1_entry, "2x2 veya 3x3 matrisi girin (köşeli parantezler ve virgüllerle)")
+            elif algo == "DES":
+                set_placeholder(self.key1_entry, "8 karakter girin")
+            elif algo == "AES":
+                set_placeholder(self.key1_entry, "16, 24 veya 32 karakter girin")
+            elif algo == "AES Kütüphaneli":
+                set_placeholder(self.key1_entry, "16, 24 veya 32 karakter girin")
+            elif algo == "DES Kütüphaneli":
+                set_placeholder(self.key1_entry, "8 karakter girin")
+            elif algo == "RSA":
+                if self.operation_type == "encrypt":
+                    set_placeholder(self.key1_entry, "Şifreleme için açık anahtar girin (örn: {'e':..., 'n':...})")
+                else:
+                    set_placeholder(self.key1_entry, "Deşifreleme için özel anahtar girin (örn: {'d':..., 'n':...})")
 
 
 class RSAKeyManager:
