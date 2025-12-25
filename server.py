@@ -31,6 +31,8 @@ class CryptoRequest(BaseModel):
     key2: Optional[int] = None
     data: Optional[dict] = None
 
+    iv: Optional[str] = None
+
 
 class CryptoResponse(BaseModel):
     result: str
@@ -39,6 +41,8 @@ class CryptoResponse(BaseModel):
     encrypted_key: Optional[str] = None
     private_key: Optional[str] = None
 
+    iv: Optional[str] = None
+
 
 class Server:
     def _parse_hill_matrix(self, key_str: str) -> np.ndarray:
@@ -46,18 +50,52 @@ class Server:
         if not key_str:
             raise HTTPException(400, "Hill anahtar matrisi boş olamaz")
 
-        if key_str.startswith("["):
-            matrix_list = ast.literal_eval(key_str)
-        else:
-            rows = key_str.split(";")
-            matrix_list = [[int(x) for x in row.split()] for row in rows]
+      
+        normalized = key_str.replace(",", " ").replace("\n", " ").strip()
 
-        matrix = np.array(matrix_list)
+        try:
+            if normalized.startswith("["):
+                matrix_list = ast.literal_eval(normalized)
+
+            else:
+                rows = normalized.split(";")
+                matrix_list = []
+                for row in rows:
+                    row = row.strip()
+                    if not row:
+                        continue
+                    nums = [int(x) for x in row.split()]
+                    matrix_list.append(nums)
+
+            matrix = np.array(matrix_list)
+
+        except Exception as e:
+            raise HTTPException(
+                400,
+                "Hill anahtar formatı hatalı. Örnekler:\n"
+                "1) [[3,3],[2,5]]\n"
+                "2) 3 3; 2 5\n"
+                f"Gelen anahtar: {key_str}\n"
+                f"Hata: {e}"
+            )
+    
+        if matrix.ndim != 2:
+            raise HTTPException(400, "Hill matrisi 2 boyutlu olmalı (örn. 2x2, 3x3)")
+
         if matrix.shape[0] != matrix.shape[1]:
             raise HTTPException(400, "Hill matrisi kare olmalı")
+
         return matrix
 
-    # ---------------- ENCRYPT ----------------
+    def _sanitize_hill_text(self, text: str) -> str:
+        if text is None:
+            return ""
+
+        cleaned = text.replace("\n", "").replace("\r", "").replace(" ", "").strip()
+
+   
+
+        return cleaned
     def encrypt(self, algorithm: str, text: str, key1=None, key2=None):
         try:
             if algorithm == "Caesar":
@@ -102,7 +140,6 @@ class Server:
             elif algorithm == "DES":
                 return DESCipherTR(str(key1)).encrypt(text)
 
-            # ✅ DÜZELTİLEN KISIM
             elif algorithm == "AES Kütüphaneli":
                 aes = AESLibraryCipherTR()
                 return aes.encrypt(text)
@@ -119,22 +156,86 @@ class Server:
             raise HTTPException(400, str(e))
 
     # ---------------- DECRYPT ----------------
-    def decrypt(self, algorithm: str, data: dict, key1=None, key2=None):
+    def decrypt(self, algorithm: str, text: Optional[str], data: Optional[dict], key1=None, key2=None):
+        """
+        ✅ Kural:
+        - Kütüphaneli AES/DES -> data dict ile çöz
+        - Diğerleri -> text (ciphertext) ile çöz
+        """
         try:
-            # ✅ DÜZELTİLEN KISIM
             if algorithm == "AES Kütüphaneli":
+                if not data:
+                    raise HTTPException(400, "AES Kütüphaneli decrypt için data zorunlu")
                 aes = AESLibraryCipherTR()
                 return aes.decrypt(data)
 
             elif algorithm == "DES Kütüphaneli":
+                if not data:
+                    raise HTTPException(400, "DES Kütüphaneli decrypt için data zorunlu")
                 des = DESLibraryCipherTR()
                 return des.decrypt(data)
 
             elif algorithm == "AES":
-                return AESCipherTR(str(key1)).decrypt(data)
+                if text is None:
+                    raise HTTPException(400, "AES decrypt için text zorunlu")
+                return AESCipherTR(str(key1)).decrypt(text)
 
             elif algorithm == "DES":
-                return DESCipherTR(str(key1)).decrypt(data)
+                if text is None:
+                    raise HTTPException(400, "DES decrypt için text zorunlu")
+                return DESCipherTR(str(key1)).decrypt(text)
+
+            elif algorithm == "Caesar":
+                if text is None:
+                    raise HTTPException(400, "Caesar decrypt için text zorunlu")
+                cipher = CaesarCipherTR()
+                cipher.shift = int(key1)
+                return cipher.decrypt(text)
+
+            elif algorithm == "Vigenere":
+                if text is None:
+                    raise HTTPException(400, "Vigenere decrypt için text zorunlu")
+                return VigenereCipherTR(str(key1)).decrypt(text)
+
+            elif algorithm == "Affine":
+                if text is None:
+                    raise HTTPException(400, "Affine decrypt için text zorunlu")
+                cipher = AffineCipherTR()
+                cipher.a = int(key1)
+                cipher.b = int(key2)
+                return cipher.decrypt(text)
+
+            elif algorithm == "Rail Fence":
+                if text is None:
+                    raise HTTPException(400, "Rail Fence decrypt için text zorunlu")
+                cipher = RailFenceCipherTR()
+                cipher.rails = int(key1)
+                return cipher.decrypt(text)
+
+            elif algorithm == "Route":
+                if text is None:
+                    raise HTTPException(400, "Route decrypt için text zorunlu")
+                cipher = RouteCipherTR()
+                cipher.cols = int(key1)
+                return cipher.decrypt(text)
+
+            elif algorithm == "Columnar":
+                if text is None:
+                    raise HTTPException(400, "Columnar decrypt için text zorunlu")
+                cipher = ColumnarCipherTR()
+                cipher.key = str(key1)
+                return cipher.decrypt(text)
+
+            elif algorithm == "Polybius":
+                if text is None:
+                    raise HTTPException(400, "Polybius decrypt için text zorunlu")
+                return PolybiusCipherTR().decrypt(text)
+
+            elif algorithm == "Hill":
+                if text is None:
+                    raise HTTPException(400, "Hill decrypt için text zorunlu")
+                matrix = self._parse_hill_matrix(str(key1))
+                return HillCipherTR(matrix).decrypt(text)
 
             else:
                 raise HTTPException(400, "Geçersiz algoritma")
@@ -151,6 +252,9 @@ server = Server()
 async def process_crypto(req: CryptoRequest):
 
     if req.operation == "encrypt":
+        if req.text is None:
+            raise HTTPException(400, "Encrypt için text zorunlu")
+
         result = server.encrypt(req.algorithm, req.text, req.key1, req.key2)
 
         if req.algorithm in ["AES Kütüphaneli", "DES Kütüphaneli"]:
@@ -159,7 +263,8 @@ async def process_crypto(req: CryptoRequest):
                 algorithm=req.algorithm,
                 operation=req.operation,
                 encrypted_key=result["encrypted_key"],
-                private_key=result["private_key"]
+                private_key=result["private_key"],
+                iv=result.get("iv")
             )
 
         return CryptoResponse(
@@ -169,10 +274,23 @@ async def process_crypto(req: CryptoRequest):
         )
 
     elif req.operation == "decrypt":
-        if not req.data:
-            raise HTTPException(400, "Decrypt için data zorunlu")
+    
+        if req.algorithm in ["AES Kütüphaneli", "DES Kütüphaneli"]:
+            if not req.data:
+                raise HTTPException(400, "Decrypt için data zorunlu")
 
-        result = server.decrypt(req.algorithm, req.data, req.key1, req.key2)
+            if req.data is not None and "iv" not in req.data and req.iv:
+                req.data["iv"] = req.iv
+
+            if req.data is not None and "ciphertext" not in req.data and req.text:
+                req.data["ciphertext"] = req.text
+
+            result = server.decrypt(req.algorithm, req.text, req.data, req.key1, req.key2)
+
+        else:
+            if req.text is None:
+                raise HTTPException(400, "Decrypt için text zorunlu")
+            result = server.decrypt(req.algorithm, req.text, None, req.key1, req.key2)
 
         return CryptoResponse(
             result=str(result),

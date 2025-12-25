@@ -30,13 +30,14 @@ def set_placeholder(entry, text):
 
 
 class CryptoWindow:
+    shared_crypto_data = None
+
     def __init__(self, title, operation_type):
         self.window = tk.Toplevel()
         self.window.title(title)
         self.window.geometry("500x550")
         self.operation_type = operation_type
 
-        # 🔥 Decrypt için saklanan veri
         self.last_crypto_data = None
 
         tk.Label(self.window, text="Metin Girin:", font=("Arial", 9)).pack(pady=(10, 5))
@@ -70,6 +71,9 @@ class CryptoWindow:
         self.key1_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
         self.key1_entry = tk.Entry(self.key_frame, width=50)
 
+        self.key2_label = tk.Label(self.key_frame, text="", font=("Arial", 8))
+        self.key2_entry = tk.Entry(self.key_frame, width=50)
+
         tk.Label(self.window, text="Sonuç:", font=("Arial", 9)).pack(pady=(10, 3))
 
         self.result_text = tk.Text(self.window, height=10, wrap="word")
@@ -87,9 +91,14 @@ class CryptoWindow:
 
     def update_keys(self, *args):
         algo = self.algorithm.get()
+
         self.key1_label.pack_forget()
         self.key1_entry.pack_forget()
+        self.key2_label.pack_forget()
+        self.key2_entry.pack_forget()
+
         self.key1_entry.delete(0, tk.END)
+        self.key2_entry.delete(0, tk.END)
 
         if not algo or algo == "Polybius":
             return
@@ -103,24 +112,43 @@ class CryptoWindow:
         if algo == "Caesar":
             self.key1_label.config(text="Anahtar (Sayı)")
             set_placeholder(self.key1_entry, "Sayı girin")
+
         elif algo == "Affine":
-            self.key1_label.config(text="Anahtar 1")
-            set_placeholder(self.key1_entry, "Sayı girin")
+            self.key1_label.config(text="Anahtar a")
+            set_placeholder(self.key1_entry, "Örn: 5")
+
+            self.key2_label.pack()
+            self.key2_entry.pack(pady=2)
+            self.key2_label.config(text="Anahtar b")
+            set_placeholder(self.key2_entry, "Örn: 8")
+
         elif algo == "Vigenere":
             self.key1_label.config(text="Anahtar Kelime")
             set_placeholder(self.key1_entry, "Kelime girin")
+
         elif algo == "Rail Fence":
             self.key1_label.config(text="Ray Sayısı")
             set_placeholder(self.key1_entry, "Sayı girin")
+
         elif algo == "Route":
             self.key1_label.config(text="Sütun Sayısı")
             set_placeholder(self.key1_entry, "Sayı girin")
+
         elif algo == "Columnar":
             self.key1_label.config(text="Anahtar Kelime")
             set_placeholder(self.key1_entry, "Kelime girin")
+
         elif algo == "Hill":
             self.key1_label.config(text="Anahtar Matris")
             set_placeholder(self.key1_entry, "[[3,3],[2,5]]")
+
+        elif algo == "DES":
+            self.key1_label.config(text="DES Anahtarı (8 karakter)")
+            set_placeholder(self.key1_entry, "Örn: 12345678")
+
+        elif algo == "AES":
+            self.key1_label.config(text="AES Anahtarı (16/24/32 karakter)")
+            set_placeholder(self.key1_entry, "Örn: 1234567890abcdef")
 
     def set_result(self, text):
         self.result_text.config(state="normal")
@@ -135,16 +163,30 @@ class CryptoWindow:
             self.set_result("Hata: Algoritma seçilmedi")
             return
 
-        # 🔐 AES/DES Kütüphaneli DECRYPT
         if algo in ["AES Kütüphaneli", "DES Kütüphaneli"] and self.operation_type == "decrypt":
+            if not self.last_crypto_data and CryptoWindow.shared_crypto_data:
+                self.last_crypto_data = CryptoWindow.shared_crypto_data
+
             if not self.last_crypto_data:
-                self.set_result("Hata: Önce şifreleme yapmalısın")
+                self.set_result("Hata: Önce şifreleme yapmalısın (kütüphaneli decrypt için RSA anahtar verisi gerekli)")
+                return
+
+            typed_text = self.input_text.get().strip()
+            if typed_text:
+                ciphertext_to_use = typed_text
+            else:
+                ciphertext_to_use = self.last_crypto_data.get("ciphertext", "")
+
+            if "iv" not in self.last_crypto_data or not self.last_crypto_data.get("iv"):
+                self.set_result("Hata: Kütüphaneli decrypt için 'iv' eksik (encrypt response'unda iv gelmiyor olabilir)")
                 return
 
             payload = {
                 "algorithm": algo,
                 "operation": "decrypt",
-                "data": self.last_crypto_data
+                "text": ciphertext_to_use,
+                "data": self.last_crypto_data,
+                "iv": self.last_crypto_data.get("iv")
             }
 
         else:
@@ -159,6 +201,8 @@ class CryptoWindow:
                 "text": text
             }
 
+           
+
             if algo not in ["AES Kütüphaneli", "DES Kütüphaneli", "Polybius"]:
                 key = self.key1_entry.get().strip()
                 if not key or "gir" in key:
@@ -166,28 +210,53 @@ class CryptoWindow:
                     return
                 payload["key1"] = key
 
+                if algo == "Affine":
+                    key2 = self.key2_entry.get().strip()
+                    if not key2 or "gir" in key2:
+                        self.set_result("Hata: Affine için 2. anahtar (b) eksik")
+                        return
+                    payload["key2"] = int(key2)
+
         try:
             response = requests.post(f"{SERVER_URL}/crypto", json=payload)
-            data = response.json()
+
+            try:
+                data = response.json()
+            except Exception:
+                self.set_result(
+                    "Hata: Sunucu JSON dönmedi.\n\n"
+                    f"HTTP: {response.status_code}\n"
+                    f"Yanıt:\n{response.text}"
+                )
+                return
 
             if response.status_code == 200:
-                # 🔥 AES/DES encrypt
                 if algo in ["AES Kütüphaneli", "DES Kütüphaneli"] and self.operation_type == "encrypt":
                     self.last_crypto_data = {
-                        "ciphertext": data["result"],
-                        "encrypted_key": data["encrypted_key"],
-                        "private_key": data["private_key"]
+                        "ciphertext": data.get("result"),
+                        "encrypted_key": data.get("encrypted_key"),
+                        "private_key": data.get("private_key"),
+                        "iv": data.get("iv")
                     }
+
+                    CryptoWindow.shared_crypto_data = self.last_crypto_data
 
                     self.set_result(
                         "ŞİFRELİ METİN:\n"
-                        + data["result"]
+                        + str(data.get("result"))
                         + "\n\nDeşifreleme için hazır."
                     )
                 else:
-                    self.set_result("Sonuç:\n" + data["result"])
+                    self.set_result("Sonuç:\n" + str(data.get("result")))
             else:
-                self.set_result("Hata:\n" + data.get("detail", "Bilinmeyen hata"))
+                detail = data.get("detail", "Bilinmeyen hata")
+                self.set_result(
+                    "Hata:\n"
+                    + str(detail)
+                    + f"\n\nHTTP: {response.status_code}\n"
+                    + "Sunucu Yanıtı (raw):\n"
+                    + response.text
+                )
 
         except Exception as e:
             self.set_result(f"Sunucu hatası: {e}")
@@ -195,8 +264,10 @@ class CryptoWindow:
     def clear_fields(self):
         self.input_text.delete(0, tk.END)
         self.key1_entry.delete(0, tk.END)
+        self.key2_entry.delete(0, tk.END)
         self.set_result("")
         self.last_crypto_data = None
+        CryptoWindow.shared_crypto_data = None
 
 
 if __name__ == "__main__":
