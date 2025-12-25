@@ -1,39 +1,33 @@
-# algorithms/aes.py
+# algorithms/aes_k.py
 import base64
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
-
+from algorithms.rsa import RSACipherTR
 
 class AESCipherTR:
-    """
-    Key: 16/24/32 karakter (UTF-8'e çevrilir)
-    Encrypt output: base64(iv):base64(ciphertext)
-    """
-
-    def __init__(self, key: str):
-        if not isinstance(key, str) or len(key) not in (16, 24, 32):
-            raise ValueError("AES anahtarı 16, 24 veya 32 karakter olmalı")
-        self.key = key.encode("utf-8")
-
-    def encrypt(self, plaintext: str) -> str:
-        if not isinstance(plaintext, str):
-            raise ValueError("AES encrypt: text string olmalı")
-
+    def encrypt(self, plaintext: str):
+        aes_key = get_random_bytes(16)
         iv = get_random_bytes(16)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv=iv)
-        ct = cipher.encrypt(pad(plaintext.encode("utf-8"), AES.block_size))
 
-        return f"{base64.b64encode(iv).decode()}:{base64.b64encode(ct).decode()}"
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        ciphertext = cipher.encrypt(pad(plaintext.encode(), AES.block_size))
 
-    def decrypt(self, ciphertext: str) -> str:
-        if not isinstance(ciphertext, str) or ":" not in ciphertext:
-            raise ValueError("AES decrypt: format base64(iv):base64(ciphertext) olmalı")
+        rsa = RSACipherTR()
 
-        iv_b64, ct_b64 = ciphertext.split(":", 1)
-        iv = base64.b64decode(iv_b64)
-        ct = base64.b64decode(ct_b64)
+        return {
+            "ciphertext": base64.b64encode(ciphertext).decode(),
+            "iv": base64.b64encode(iv).decode(),
+            "encrypted_key": rsa.encrypt_bytes(aes_key),
+            "private_key": rsa.export_private_key()
+        }
 
-        cipher = AES.new(self.key, AES.MODE_CBC, iv=iv)
-        pt = unpad(cipher.decrypt(ct), AES.block_size)
-        return pt.decode("utf-8")
+    def decrypt(self, data: dict):
+        rsa = RSACipherTR(data["private_key"])
+        aes_key = rsa.decrypt_bytes(data["encrypted_key"])
+
+        iv = base64.b64decode(data["iv"])
+        ciphertext = base64.b64decode(data["ciphertext"])
+
+        cipher = AES.new(aes_key, AES.MODE_CBC, iv)
+        return unpad(cipher.decrypt(ciphertext), AES.block_size).decode()
